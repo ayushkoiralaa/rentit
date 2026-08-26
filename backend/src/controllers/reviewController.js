@@ -1,0 +1,64 @@
+import asyncHandler from "express-async-handler";
+import Review from "../models/Review.js";
+import Booking from "../models/Booking.js";
+import Item from "../models/Item.js";
+import User from "../models/User.js";
+import { ApiError } from "../utils/ApiError.js";
+import { notify } from "../utils/notify.js";
+
+// Recompute the running average without re-scanning every review, by
+// folding the new rating into the stored count/average atomically.
+async function bumpRating(Model, id, rating) {
+  const doc = await Model.findById(id);
+  const newCount = doc.ratingCount + 1;
+  const newAverage = (doc.ratingAverage * doc.ratingCount + rating) / newCount;
+  doc.ratingCount = newCount;
+  doc.ratingAverage = Math.round(newAverage * 10) / 10;
+  await doc.save();
+}
+
+// POST /api/reviews
+export const createReview = asyncHandler(async (req, res) => {
+  const { bookingId, rating, comment } = req.body;
+
+  const booking = await Booking.findById(bookingId).populate("item");
+  if (!booking) throw ApiError.notFound("Booking not found.");
+  if (String(booking.renter) !== String(req.user._id)) {
+    throw ApiError.forbidden("Only the renter can review this rental.");
+  }
+  if (booking.status !== "COMPLETED") {
+    throw ApiError.badRequest("You can only review a rental after it's completed.");
+  }
+
+  const existing = await Review.findOne({ booking: booking._id, reviewer: req.user._id });
+  if (existing) throw ApiError.conflict("You already reviewed this rental.");
+
+  const review = await Review.create({
+    booking: booking._id,
+    item: booking.item._id,
+    reviewer: req.user._id,
+    reviewee: booking.owner,
+    rating,
+    comment,
+  });
+
+  await bumpRating(Item, booking.item._id, rating);
+  await bumpRating(User, booking.owner, rating);
+
+  await notify(booking.owner, {
+    type: "REVIEW_RECEIVED",
+    title: "You got a new review",
+    message: `${req.user.name} left a ${rating}-star review on "${booking.item.title}".`,
+    link: `/items/${booking.item.slug}`,
+  });
+
+  res.status(201).json({ success: true, review });
+});
+
+// GET /api/reviews/item/:itemId
+export const getItemReviews = asyncHandler(async (req, res) => {
+  const reviews = await Review.find({ item: req.params.itemId })
+    .sort({ createdAt: -1 })
+    .populate("reviewer", "name avatarUrl");
+  res.json({ success: true, reviews });
+});
