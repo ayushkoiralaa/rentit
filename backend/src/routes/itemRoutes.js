@@ -20,7 +20,10 @@ const router = Router();
 const itemValidators = [
   body("title").trim().notEmpty().withMessage("Title is required.").isLength({ max: 120 }),
   body("description").trim().notEmpty().withMessage("Description is required.").isLength({ max: 3000 }),
-  body("category").notEmpty().withMessage("Select a category."),
+  // Category is optional — pick an existing one, type a new one in
+  // "newCategory", or leave both blank and it lands in "General".
+  body("category").optional({ checkFalsy: true }).isString(),
+  body("newCategory").optional({ checkFalsy: true }).isString().isLength({ max: 60 }),
   body("pricePerDay").isFloat({ min: 1 }).withMessage("Price per day must be greater than 0."),
   body("securityDeposit").optional().isFloat({ min: 0 }),
   body("location").trim().notEmpty().withMessage("Location is required."),

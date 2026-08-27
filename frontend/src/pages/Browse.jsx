@@ -30,6 +30,7 @@ export default function Browse() {
   const toast = useToast();
 
   const q = searchParams.get("q") || "";
+  const tag = searchParams.get("tag") || "";
   const category = searchParams.get("category") || "";
   const city = searchParams.get("city") || "";
   const minPrice = searchParams.get("minPrice") || "";
@@ -52,7 +53,7 @@ export default function Browse() {
     setLoading(true);
     setLoadError(false);
     itemsApi
-      .browse({ q, category, city, minPrice, maxPrice, condition, sort, page, limit: 12 })
+      .browse({ q, tag, category, city, minPrice, maxPrice, condition, sort, page, limit: 12 })
       .then((res) => {
         setItems(res.items);
         setPagination(res.pagination);
@@ -61,7 +62,7 @@ export default function Browse() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadItems, [q, category, city, minPrice, maxPrice, condition, sort, page]);
+  useEffect(loadItems, [q, tag, category, city, minPrice, maxPrice, condition, sort, page]);
 
   const updateParam = useCallback(
     (key, value) => {
@@ -103,6 +104,15 @@ export default function Browse() {
         <h1 className="font-display font-bold text-xl">
           {loading ? "Searching..." : `${pagination.total} item${pagination.total !== 1 ? "s" : ""} available`}
           {q && <span className="text-muted font-normal text-base"> for "{q}"</span>}
+          {tag && (
+            <button
+              type="button"
+              onClick={() => updateParam("tag", "")}
+              className="ml-2 align-middle text-xs font-medium bg-brand-soft text-brand rounded-full px-2.5 py-1 hover:opacity-80"
+            >
+              #{tag} ✕
+            </button>
+          )}
         </h1>
         <div className="flex items-center gap-2">
           <select

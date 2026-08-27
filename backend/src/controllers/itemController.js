@@ -7,6 +7,46 @@ import Booking, { ACTIVE_HOLD_STATUSES } from "../models/Booking.js";
 import Favorite from "../models/Favorite.js";
 import { ApiError } from "../utils/ApiError.js";
 
+// Every listing needs *some* category doc to populate/filter on, but we no
+// longer force the poster to pick one from the fixed tree. This resolves,
+// in order: an existing category id -> a typed custom name (reusing it if
+// someone already made that category, otherwise creating it) -> a shared
+// "General" fallback category that's created once and reused after that.
+async function resolveCategory({ category, newCategory }, user) {
+  if (category && mongoose.isValidObjectId(category)) {
+    const existing = await Category.findById(category);
+    if (existing) return existing;
+  }
+
+  const typedName = (newCategory || "").trim();
+  if (typedName) {
+    const slug = slugify(typedName, { lower: true, strict: true }).slice(0, 60);
+    let cat = await Category.findOne({ slug });
+    if (!cat) {
+      cat = await Category.create({ name: typedName, slug, icon: "Tag", createdBy: user._id });
+    }
+    return cat;
+  }
+
+  let general = await Category.findOne({ slug: "general" });
+  if (!general) {
+    general = await Category.create({ name: "General", slug: "general", icon: "Tag" });
+  }
+  return general;
+}
+
+// Normalizes tags coming from either a comma-separated string (plain
+// <input>) or an array (JSON body / repeated form fields) into a clean,
+// de-duplicated array capped at a sane size.
+function normalizeTags(tags) {
+  const raw = Array.isArray(tags) ? tags : typeof tags === "string" ? tags.split(",") : [];
+  const cleaned = raw
+    .map((t) => String(t).trim().toLowerCase())
+    .filter(Boolean)
+    .filter((t, i, arr) => arr.indexOf(t) === i);
+  return cleaned.slice(0, 15);
+}
+
 async function uniqueSlug(title) {
   const base = slugify(title, { lower: true, strict: true }).slice(0, 80) || "item";
   let slug = base;
@@ -33,6 +73,7 @@ export const browseItems = asyncHandler(async (req, res) => {
     endDate,
     owner,
     status,
+    tag,
     sort = "recommended",
     page = 1,
     limit = 20,
@@ -73,6 +114,7 @@ export const browseItems = asyncHandler(async (req, res) => {
     if (maxPrice) filter.pricePerDay.$lte = Number(maxPrice);
   }
   if (minRating) filter.ratingAverage = { $gte: Number(minRating) };
+  if (tag) filter.tags = tag.toLowerCase().trim();
   if (q) filter.$text = { $search: q };
 
   let itemIdsToExclude = null;
@@ -158,6 +200,8 @@ export const createItem = asyncHandler(async (req, res) => {
     title,
     description,
     category,
+    newCategory,
+    tags,
     pricePerDay,
     securityDeposit,
     condition,
@@ -168,8 +212,7 @@ export const createItem = asyncHandler(async (req, res) => {
     status,
   } = req.body;
 
-  const categoryDoc = await Category.findById(category);
-  if (!categoryDoc) throw ApiError.badRequest("Select a valid category.");
+  const categoryDoc = await resolveCategory({ category, newCategory }, req.user);
 
   const images = (req.files || []).map((f) => ({
     url: `/uploads/${f.filename}`,
@@ -178,7 +221,7 @@ export const createItem = asyncHandler(async (req, res) => {
 
   const item = await Item.create({
     owner: req.user._id,
-    category,
+    category: categoryDoc._id,
     title,
     slug: await uniqueSlug(title),
     description,
@@ -188,6 +231,7 @@ export const createItem = asyncHandler(async (req, res) => {
     location,
     city,
     rules: Array.isArray(rules) ? rules : rules ? [rules] : [],
+    tags: normalizeTags(tags),
     attributes: attributes ? new Map(Object.entries(attributes)) : undefined,
     images,
     status: status === "DRAFT" ? "DRAFT" : "PUBLISHED",
@@ -212,7 +256,6 @@ export const updateItem = asyncHandler(async (req, res) => {
   const editable = [
     "title",
     "description",
-    "category",
     "pricePerDay",
     "securityDeposit",
     "condition",
@@ -224,6 +267,14 @@ export const updateItem = asyncHandler(async (req, res) => {
   for (const field of editable) {
     if (req.body[field] !== undefined) item[field] = req.body[field];
   }
+  if (req.body.category !== undefined || req.body.newCategory !== undefined) {
+    const categoryDoc = await resolveCategory(
+      { category: req.body.category, newCategory: req.body.newCategory },
+      req.user
+    );
+    item.category = categoryDoc._id;
+  }
+  if (req.body.tags !== undefined) item.tags = normalizeTags(req.body.tags);
   if (req.body.title) item.slug = await uniqueSlug(req.body.title);
   if (req.body.attributes) item.attributes = new Map(Object.entries(req.body.attributes));
 

@@ -30,7 +30,17 @@ export const createCategory = asyncHandler(async (req, res) => {
   const exists = await Category.findOne({ slug });
   if (exists) throw ApiError.conflict("A category with that name already exists.");
 
-  const category = await Category.create({ name, slug, icon, parent: parent || null });
+  // Regular (non-admin) users can only create top-level categories of their
+  // own — nesting under an existing branch stays an admin-only action so
+  // the built-in tree doesn't get cluttered by everyone.
+  const isAdmin = req.user?.role === "admin";
+  const category = await Category.create({
+    name,
+    slug,
+    icon: icon || "Tag",
+    parent: isAdmin ? parent || null : null,
+    createdBy: isAdmin ? null : req.user._id,
+  });
   res.status(201).json({ success: true, category });
 });
 

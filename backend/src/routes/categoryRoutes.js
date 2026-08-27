@@ -13,10 +13,12 @@ const router = Router();
 
 router.get("/", listCategories);
 
+// Any logged-in user can create a category (e.g. while posting an item and
+// typing one that doesn't exist yet) — not just admins. Editing/removing
+// the tree stays admin-only, see below.
 router.post(
   "/",
   requireAuth,
-  requireAdmin,
   [body("name").trim().notEmpty().withMessage("Category name is required.")],
   validate,
   createCategory

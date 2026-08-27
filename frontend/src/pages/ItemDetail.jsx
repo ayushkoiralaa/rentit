@@ -201,6 +201,20 @@ export default function ItemDetail() {
 
             <p className="text-[15px] text-ink/90 leading-relaxed mt-5 whitespace-pre-line">{item.description}</p>
 
+            {item.tags?.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {item.tags.map((t) => (
+                  <Link
+                    key={t}
+                    to={`/browse?tag=${encodeURIComponent(t)}`}
+                    className="text-xs text-brand bg-brand-soft rounded-full px-3 py-1.5 hover:opacity-80"
+                  >
+                    #{t}
+                  </Link>
+                ))}
+              </div>
+            )}
+
             {item.rules?.length > 0 && (
               <div className="mt-6">
                 <h3 className="font-semibold text-sm mb-2">Rental rules</h3>

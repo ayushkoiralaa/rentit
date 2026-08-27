@@ -30,4 +30,8 @@ export const env = {
   platformFeePercent: Number(process.env.PLATFORM_FEE_PERCENT) || 10,
   maxImageSizeMb: Number(process.env.MAX_IMAGE_SIZE_MB) || 5,
   maxImagesPerItem: Number(process.env.MAX_IMAGES_PER_ITEM) || 8,
+  // Auto-creates demo login accounts + base categories on every server
+  // start if they don't already exist. Defaults on; set AUTO_SEED=false in
+  // .env to disable (recommended for a real production deployment).
+  autoSeed: process.env.AUTO_SEED !== "false",
 };

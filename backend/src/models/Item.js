@@ -3,7 +3,14 @@ import mongoose from "mongoose";
 const itemSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true, index: true },
+    // Category is optional now — listings created without picking (or typing)
+    // one fall back to the auto-provisioned "General" category server-side.
+    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: false, index: true },
+
+    // Free-form searchable keywords the poster adds themselves, e.g.
+    // ["waterproof", "beginner-friendly"]. Included in the text index below
+    // so they're picked up by the normal search bar automatically.
+    tags: { type: [{ type: String, trim: true, lowercase: true, maxlength: 30 }], default: [] },
 
     title: { type: String, required: true, trim: true, maxlength: 120 },
     slug: { type: String, required: true, unique: true, index: true },
@@ -50,7 +57,7 @@ const itemSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-itemSchema.index({ title: "text", description: "text" });
+itemSchema.index({ title: "text", description: "text", tags: "text" });
 itemSchema.index({ status: 1, city: 1, category: 1 });
 itemSchema.index({ pricePerDay: 1 });
 
