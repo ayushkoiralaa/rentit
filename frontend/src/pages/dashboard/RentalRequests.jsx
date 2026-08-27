@@ -3,16 +3,23 @@ import { Link } from "react-router-dom";
 import { Check, X, PlayCircle, CheckCircle } from "lucide-react";
 import { bookingsApi } from "../../api/marketplace.js";
 import { useToast } from "../../context/ToastContext.jsx";
-import { PageLoader, EmptyState, PrimaryButton, DangerButton, SecondaryButton, Badge } from "../../components/ui.jsx";
+import { PageLoader, EmptyState, ErrorState, PrimaryButton, DangerButton, SecondaryButton, Badge } from "../../components/ui.jsx";
 import { formatCurrency, formatDate, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS } from "../../constants.js";
 import { resolveAssetUrl } from "../../api/client.js";
 
 export default function RentalRequests() {
   const toast = useToast();
   const [bookings, setBookings] = useState(null);
+  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
-  const load = () => bookingsApi.mine({ role: "owner" }).then((res) => setBookings(res.bookings));
+  const load = () => {
+    setError(null);
+    bookingsApi
+      .mine({ role: "owner" })
+      .then((res) => setBookings(res.bookings))
+      .catch((err) => setError(err.message || "Couldn't load your rental requests."));
+  };
   useEffect(load, []);
 
   const act = async (id, action, ...args) => {
@@ -28,6 +35,7 @@ export default function RentalRequests() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!bookings) return <PageLoader />;
 
   return (
@@ -54,13 +62,13 @@ export default function RentalRequests() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-3 pt-3 border-t border-line">
+              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
                 {b.status === "PENDING" && (
                   <>
-                    <PrimaryButton onClick={() => act(b._id, "accept")} disabled={busyId === b._id} className="flex-1 py-2 text-xs">
+                    <PrimaryButton onClick={() => act(b._id, "accept")} disabled={busyId === b._id} className="flex-1 min-w-[7rem] py-2 text-xs">
                       <Check size={13} /> Accept
                     </PrimaryButton>
-                    <DangerButton onClick={() => act(b._id, "reject")} disabled={busyId === b._id} className="flex-1 py-2 text-xs">
+                    <DangerButton onClick={() => act(b._id, "reject")} disabled={busyId === b._id} className="flex-1 min-w-[7rem] py-2 text-xs">
                       <X size={13} /> Decline
                     </DangerButton>
                   </>

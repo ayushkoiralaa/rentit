@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { itemsApi } from "../../api/items.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { PageLoader, EmptyState, PrimaryButton, SecondaryButton, DangerButton, Badge } from "../../components/ui.jsx";
+import { PageLoader, EmptyState, ErrorState, PrimaryButton, SecondaryButton, DangerButton, Badge } from "../../components/ui.jsx";
 import { formatCurrency } from "../../constants.js";
 import { resolveAssetUrl } from "../../api/client.js";
 
@@ -21,9 +21,14 @@ export default function MyListings() {
   const { user } = useAuth();
   const toast = useToast();
   const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
 
   const load = () => {
-    itemsApi.browse({ owner: user._id, limit: 50, status: "" }).then((res) => setItems(res.items));
+    setError(null);
+    itemsApi
+      .browse({ owner: user._id, limit: 50, status: "" })
+      .then((res) => setItems(res.items))
+      .catch((err) => setError(err.message || "Couldn't load your listings."));
   };
 
   useEffect(load, [user._id]);
@@ -50,6 +55,7 @@ export default function MyListings() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!items) return <PageLoader />;
 
   return (
@@ -70,25 +76,27 @@ export default function MyListings() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <div key={item._id} className="bg-white border border-line rounded-2xl p-3.5 flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-brand-soft overflow-hidden shrink-0">
-                {item.images?.[0] ? (
-                  <img src={resolveAssetUrl(item.images[0].url)} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-brand font-bold">{item.title.charAt(0)}</div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm truncate">{item.title}</p>
-                  <Badge className={STATUS_STYLES[item.status]}>{item.status.replace("_", " ")}</Badge>
+            <div key={item._id} className="bg-white border border-line rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-16 h-16 rounded-xl bg-brand-soft overflow-hidden shrink-0">
+                  {item.images?.[0] ? (
+                    <img src={resolveAssetUrl(item.images[0].url)} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-brand font-bold">{item.title.charAt(0)}</div>
+                  )}
                 </div>
-                <p className="text-xs text-muted mt-0.5">{formatCurrency(item.pricePerDay)}/day · {item.city} · {item.viewCount} views</p>
-                {item.status === "REJECTED" && item.rejectionReason && (
-                  <p className="text-xs text-danger mt-1">Reason: {item.rejectionReason}</p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-sm truncate">{item.title}</p>
+                    <Badge className={STATUS_STYLES[item.status]}>{item.status.replace("_", " ")}</Badge>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">{formatCurrency(item.pricePerDay)}/day · {item.city} · {item.viewCount} views</p>
+                  {item.status === "REJECTED" && item.rejectionReason && (
+                    <p className="text-xs text-danger mt-1">Reason: {item.rejectionReason}</p>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0 sm:ml-auto">
                 <Link to={`/items/${item.slug}`} className="w-9 h-9 rounded-lg border border-line flex items-center justify-center hover:border-brand" aria-label="View">
                   <Eye size={14} />
                 </Link>

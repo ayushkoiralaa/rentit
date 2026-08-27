@@ -5,15 +5,22 @@ import { favoritesApi, notificationsApi } from "../../api/marketplace.js";
 import { authApi } from "../../api/auth.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { PageLoader, EmptyState, PrimaryButton, TextField, TextArea } from "../../components/ui.jsx";
+import { PageLoader, EmptyState, ErrorState, PrimaryButton, TextField, TextArea } from "../../components/ui.jsx";
 import ItemCard from "../../components/ItemCard.jsx";
 import { formatDate } from "../../constants.js";
 
 export function Favorites() {
   const [favorites, setFavorites] = useState(null);
+  const [error, setError] = useState(null);
   const toast = useToast();
 
-  const load = () => favoritesApi.list().then((res) => setFavorites(res.favorites));
+  const load = () => {
+    setError(null);
+    favoritesApi
+      .list()
+      .then((res) => setFavorites(res.favorites))
+      .catch((err) => setError(err.message || "Couldn't load your favorites."));
+  };
   useEffect(load, []);
 
   const toggleFavorite = async (item) => {
@@ -26,6 +33,7 @@ export function Favorites() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!favorites) return <PageLoader />;
 
   return (
@@ -46,21 +54,37 @@ export function Favorites() {
 
 export function Notifications() {
   const [notifications, setNotifications] = useState(null);
+  const [error, setError] = useState(null);
   const toast = useToast();
 
-  const load = () => notificationsApi.list().then((res) => setNotifications(res.notifications));
+  const load = () => {
+    setError(null);
+    notificationsApi
+      .list()
+      .then((res) => setNotifications(res.notifications))
+      .catch((err) => setError(err.message || "Couldn't load your notifications."));
+  };
   useEffect(load, []);
 
   const markAll = async () => {
-    await notificationsApi.markAllRead();
-    load();
+    try {
+      await notificationsApi.markAllRead();
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
   const openNotification = async (n) => {
-    if (!n.read) await notificationsApi.markRead(n._id);
-    load();
+    try {
+      if (!n.read) await notificationsApi.markRead(n._id);
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!notifications) return <PageLoader />;
 
   return (

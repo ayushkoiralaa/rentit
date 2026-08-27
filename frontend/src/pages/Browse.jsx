@@ -4,7 +4,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { itemsApi } from "../api/items.js";
 import { categoriesApi, favoritesApi } from "../api/marketplace.js";
 import ItemCard, { ItemCardSkeleton } from "../components/ItemCard.jsx";
-import { EmptyState } from "../components/ui.jsx";
+import { EmptyState, ErrorState } from "../components/ui.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 
@@ -23,6 +23,7 @@ export default function Browse() {
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const { user } = useAuth();
@@ -38,7 +39,7 @@ export default function Browse() {
   const page = Number(searchParams.get("page") || 1);
 
   useEffect(() => {
-    categoriesApi.list().then((res) => setCategories(res.flat));
+    categoriesApi.list().then((res) => setCategories(res.flat)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -47,16 +48,20 @@ export default function Browse() {
     }
   }, [user]);
 
-  useEffect(() => {
+  const loadItems = () => {
     setLoading(true);
+    setLoadError(false);
     itemsApi
       .browse({ q, category, city, minPrice, maxPrice, condition, sort, page, limit: 12 })
       .then((res) => {
         setItems(res.items);
         setPagination(res.pagination);
       })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, [q, category, city, minPrice, maxPrice, condition, sort, page]);
+  };
+
+  useEffect(loadItems, [q, category, city, minPrice, maxPrice, condition, sort, page]);
 
   const updateParam = useCallback(
     (key, value) => {
@@ -160,6 +165,8 @@ export default function Browse() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {Array.from({ length: 9 }).map((_, i) => <ItemCardSkeleton key={i} />)}
             </div>
+          ) : loadError ? (
+            <ErrorState description="Couldn't load listings. Check your connection and try again." onRetry={loadItems} />
           ) : items.length === 0 ? (
             <EmptyState title="Nothing matches that search" description="Try a different keyword or clear some filters." />
           ) : (

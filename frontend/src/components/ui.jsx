@@ -1,5 +1,5 @@
 import React from "react";
-import { Loader2, Inbox } from "lucide-react";
+import { Loader2, Inbox, AlertTriangle } from "lucide-react";
 
 export function Spinner({ size = 20, className = "" }) {
   return <Loader2 size={size} className={`animate-spin text-brand ${className}`} />;
@@ -9,6 +9,27 @@ export function PageLoader() {
   return (
     <div className="flex items-center justify-center py-24">
       <Spinner size={28} />
+    </div>
+  );
+}
+
+// Shown instead of an infinite spinner whenever a data load fails, so a
+// dropped request or expired session never leaves the page stuck looking
+// "broken" — the person always gets a message and a way to retry.
+export function ErrorState({ title = "Something went wrong", description, onRetry }) {
+  return (
+    <div className="border border-dashed border-danger/30 bg-red-50/40 rounded-2xl py-16 px-6 text-center">
+      <AlertTriangle size={32} className="mx-auto text-danger mb-3" />
+      <h3 className="font-semibold text-ink mb-1">{title}</h3>
+      {description && <p className="text-sm text-muted max-w-sm mx-auto mb-4">{description}</p>}
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="inline-flex items-center justify-center gap-2 bg-brand text-white font-semibold rounded-xl px-5 py-2.5 text-sm hover:bg-brand-dark transition-colors"
+        >
+          Try again
+        </button>
+      )}
     </div>
   );
 }

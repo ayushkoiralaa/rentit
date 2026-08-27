@@ -4,28 +4,35 @@ import { List, CalendarCheck2, Inbox, Heart, Plus } from "lucide-react";
 import { itemsApi } from "../../api/items.js";
 import { bookingsApi, favoritesApi } from "../../api/marketplace.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { PageLoader, PrimaryButton } from "../../components/ui.jsx";
+import { PageLoader, ErrorState, PrimaryButton } from "../../components/ui.jsx";
 
 export default function DashboardOverview() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
+    setError(null);
     Promise.all([
       itemsApi.browse({ owner: user._id, limit: 1, status: "PUBLISHED" }),
       bookingsApi.mine({ role: "owner", status: "PENDING" }),
       bookingsApi.mine({ role: "renter" }),
       favoritesApi.list(),
-    ]).then(([listings, requests, rentals, favorites]) => {
-      setStats({
-        listings: listings.pagination.total,
-        pendingRequests: requests.bookings.length,
-        activeRentals: rentals.bookings.filter((b) => ["PENDING", "ACCEPTED", "ACTIVE"].includes(b.status)).length,
-        favorites: favorites.favorites.length,
-      });
-    });
-  }, [user._id]);
+    ])
+      .then(([listings, requests, rentals, favorites]) => {
+        setStats({
+          listings: listings.pagination.total,
+          pendingRequests: requests.bookings.length,
+          activeRentals: rentals.bookings.filter((b) => ["PENDING", "ACCEPTED", "ACTIVE"].includes(b.status)).length,
+          favorites: favorites.favorites.length,
+        });
+      })
+      .catch((err) => setError(err.message || "Couldn't load your dashboard."));
+  };
 
+  useEffect(load, [user._id]);
+
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!stats) return <PageLoader />;
 
   const cards = [

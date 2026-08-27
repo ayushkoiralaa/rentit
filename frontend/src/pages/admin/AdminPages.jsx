@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { LayoutGrid, Users, List, CalendarCheck2, Flag, ScrollText } from "lucide-react";
 import { adminApi } from "../../api/marketplace.js";
-import { PageLoader, Badge, PrimaryButton, SecondaryButton, DangerButton, EmptyState } from "../../components/ui.jsx";
+import { PageLoader, Badge, PrimaryButton, SecondaryButton, DangerButton, EmptyState, ErrorState } from "../../components/ui.jsx";
 import { formatCurrency, formatDate, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS } from "../../constants.js";
 import { useToast } from "../../context/ToastContext.jsx";
 
@@ -45,7 +45,13 @@ export function AdminLayout() {
 
 export function AdminOverview() {
   const [a, setA] = useState(null);
-  useEffect(() => { adminApi.analytics().then((res) => setA(res.analytics)); }, []);
+  const [error, setError] = useState(null);
+  const load = () => {
+    setError(null);
+    adminApi.analytics().then((res) => setA(res.analytics)).catch((err) => setError(err.message || "Couldn't load analytics."));
+  };
+  useEffect(load, []);
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!a) return <PageLoader />;
 
   const cards = [
@@ -86,8 +92,12 @@ export function AdminOverview() {
 
 export function AdminUsers() {
   const [users, setUsers] = useState(null);
+  const [error, setError] = useState(null);
   const toast = useToast();
-  const load = () => adminApi.users({ limit: 50 }).then((res) => setUsers(res.users));
+  const load = () => {
+    setError(null);
+    adminApi.users({ limit: 50 }).then((res) => setUsers(res.users)).catch((err) => setError(err.message || "Couldn't load users."));
+  };
   useEffect(load, []);
 
   const setStatus = async (u, status) => {
@@ -100,13 +110,14 @@ export function AdminUsers() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!users) return <PageLoader />;
   return (
     <div>
       <h1 className="font-display font-bold text-xl mb-5">Users</h1>
       <div className="bg-white border border-line rounded-2xl overflow-hidden">
         {users.map((u) => (
-          <div key={u._id} className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0">
+          <div key={u._id} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-3 border-b border-line last:border-0">
             <div className="w-9 h-9 rounded-full bg-brand-soft text-brand text-xs font-semibold flex items-center justify-center shrink-0">{u.name.charAt(0)}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{u.name} {u.role === "admin" && <Badge className="ml-1 bg-brand-soft text-brand border-brand/20">admin</Badge>}</p>
@@ -115,9 +126,9 @@ export function AdminUsers() {
             <Badge className={u.status === "active" ? "bg-emerald-50 text-success border-emerald-200" : "bg-red-50 text-danger border-red-200"}>{u.status}</Badge>
             {u.role !== "admin" && (
               u.status === "active" ? (
-                <DangerButton onClick={() => setStatus(u, "suspended")} className="py-1.5 px-3 text-xs">Suspend</DangerButton>
+                <DangerButton onClick={() => setStatus(u, "suspended")} className="py-1.5 px-3 text-xs shrink-0">Suspend</DangerButton>
               ) : (
-                <SecondaryButton onClick={() => setStatus(u, "active")} className="py-1.5 px-3 text-xs">Reactivate</SecondaryButton>
+                <SecondaryButton onClick={() => setStatus(u, "active")} className="py-1.5 px-3 text-xs shrink-0">Reactivate</SecondaryButton>
               )
             )}
           </div>
@@ -129,8 +140,12 @@ export function AdminUsers() {
 
 export function AdminListings() {
   const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
   const toast = useToast();
-  const load = () => adminApi.listings({ limit: 50 }).then((res) => setItems(res.items));
+  const load = () => {
+    setError(null);
+    adminApi.listings({ limit: 50 }).then((res) => setItems(res.items)).catch((err) => setError(err.message || "Couldn't load listings."));
+  };
   useEffect(load, []);
 
   const moderate = async (item, status) => {
@@ -145,19 +160,20 @@ export function AdminListings() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!items) return <PageLoader />;
   return (
     <div>
       <h1 className="font-display font-bold text-xl mb-5">Listings</h1>
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item._id} className="bg-white border border-line rounded-xl p-3.5 flex items-center gap-3">
+          <div key={item._id} className="bg-white border border-line rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{item.title}</p>
               <p className="text-xs text-muted">{item.owner?.name} · {formatCurrency(item.pricePerDay)}/day · {item.status}</p>
             </div>
             {item.status !== "REMOVED" && (
-              <div className="flex gap-1.5 shrink-0">
+              <div className="flex flex-wrap gap-1.5 shrink-0">
                 {item.status !== "PUBLISHED" && <SecondaryButton onClick={() => moderate(item, "PUBLISHED")} className="py-1.5 px-2.5 text-xs">Approve</SecondaryButton>}
                 {item.status !== "REJECTED" && <DangerButton onClick={() => moderate(item, "REJECTED")} className="py-1.5 px-2.5 text-xs">Reject</DangerButton>}
                 <DangerButton onClick={() => moderate(item, "REMOVED")} className="py-1.5 px-2.5 text-xs">Remove</DangerButton>
@@ -172,19 +188,25 @@ export function AdminListings() {
 
 export function AdminBookings() {
   const [bookings, setBookings] = useState(null);
-  useEffect(() => { adminApi.bookings({ limit: 50 }).then((res) => setBookings(res.bookings)); }, []);
+  const [error, setError] = useState(null);
+  const load = () => {
+    setError(null);
+    adminApi.bookings({ limit: 50 }).then((res) => setBookings(res.bookings)).catch((err) => setError(err.message || "Couldn't load bookings."));
+  };
+  useEffect(load, []);
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!bookings) return <PageLoader />;
   return (
     <div>
       <h1 className="font-display font-bold text-xl mb-5">Bookings</h1>
       <div className="space-y-2">
         {bookings.map((b) => (
-          <div key={b._id} className="bg-white border border-line rounded-xl p-3.5 flex items-center gap-3">
+          <div key={b._id} className="bg-white border border-line rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{b.item?.title}</p>
               <p className="text-xs text-muted">{b.renter?.name} ← {b.owner?.name} · {formatCurrency(b.totalAmount)} · {formatDate(b.startDate)}</p>
             </div>
-            <Badge className={BOOKING_STATUS_COLORS[b.status]}>{BOOKING_STATUS_LABELS[b.status]}</Badge>
+            <Badge className={`${BOOKING_STATUS_COLORS[b.status]} shrink-0 self-start sm:self-auto`}>{BOOKING_STATUS_LABELS[b.status]}</Badge>
           </div>
         ))}
       </div>
@@ -194,8 +216,12 @@ export function AdminBookings() {
 
 export function AdminReports() {
   const [reports, setReports] = useState(null);
+  const [error, setError] = useState(null);
   const toast = useToast();
-  const load = () => adminApi.reports({}).then((res) => setReports(res.reports));
+  const load = () => {
+    setError(null);
+    adminApi.reports({}).then((res) => setReports(res.reports)).catch((err) => setError(err.message || "Couldn't load reports."));
+  };
   useEffect(load, []);
 
   const update = async (r, status) => {
@@ -208,6 +234,7 @@ export function AdminReports() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!reports) return <PageLoader />;
   if (reports.length === 0) return <EmptyState title="No reports" description="Reports from users will appear here." />;
   return (
@@ -238,7 +265,13 @@ export function AdminReports() {
 
 export function AdminAuditLogs() {
   const [logs, setLogs] = useState(null);
-  useEffect(() => { adminApi.auditLogs().then((res) => setLogs(res.logs)); }, []);
+  const [error, setError] = useState(null);
+  const load = () => {
+    setError(null);
+    adminApi.auditLogs().then((res) => setLogs(res.logs)).catch((err) => setError(err.message || "Couldn't load the audit log."));
+  };
+  useEffect(load, []);
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!logs) return <PageLoader />;
   return (
     <div>

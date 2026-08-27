@@ -12,9 +12,12 @@ export default function Home() {
   const [trending, setTrending] = useState([]);
   const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadHome = () => {
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       categoriesApi.list(),
       itemsApi.browse({ sort: "recommended", limit: 8 }),
@@ -25,8 +28,11 @@ export default function Home() {
         setTrending(trendingRes.items);
         setRecent(recentRes.items);
       })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(loadHome, []);
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -57,6 +63,15 @@ export default function Home() {
           </button>
         </form>
       </section>
+
+      {loadError && (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="border border-dashed border-danger/30 bg-red-50/40 rounded-2xl p-4 text-sm text-center flex flex-col sm:flex-row items-center justify-center gap-2">
+            <span className="text-ink/80">Couldn't load listings right now.</span>
+            <button onClick={loadHome} className="font-semibold text-brand hover:underline">Try again</button>
+          </div>
+        </section>
+      )}
 
       {/* CATEGORY STRIP */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">

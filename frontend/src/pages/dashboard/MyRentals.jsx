@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { CreditCard, XCircle, Star } from "lucide-react";
 import { bookingsApi, reviewsApi } from "../../api/marketplace.js";
 import { useToast } from "../../context/ToastContext.jsx";
-import { PageLoader, EmptyState, PrimaryButton, DangerButton, Badge } from "../../components/ui.jsx";
+import { PageLoader, EmptyState, ErrorState, PrimaryButton, DangerButton, Badge } from "../../components/ui.jsx";
 import { StarRatingInput } from "../../components/StarRating.jsx";
 import { formatCurrency, formatDate, BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS } from "../../constants.js";
 import { resolveAssetUrl } from "../../api/client.js";
@@ -11,12 +11,19 @@ import { resolveAssetUrl } from "../../api/client.js";
 export default function MyRentals() {
   const toast = useToast();
   const [bookings, setBookings] = useState(null);
+  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [reviewingId, setReviewingId] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
-  const load = () => bookingsApi.mine({ role: "renter" }).then((res) => setBookings(res.bookings));
+  const load = () => {
+    setError(null);
+    bookingsApi
+      .mine({ role: "renter" })
+      .then((res) => setBookings(res.bookings))
+      .catch((err) => setError(err.message || "Couldn't load your rentals."));
+  };
   useEffect(load, []);
 
   const pay = async (id) => {
@@ -59,6 +66,7 @@ export default function MyRentals() {
     }
   };
 
+  if (error) return <ErrorState description={error} onRetry={load} />;
   if (!bookings) return <PageLoader />;
 
   return (
