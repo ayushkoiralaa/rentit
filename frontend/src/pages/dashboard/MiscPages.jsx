@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, CheckCheck } from "lucide-react";
-import { favoritesApi, notificationsApi } from "../../api/marketplace.js";
+import { favoritesApi } from "../../api/marketplace.js";
 import { authApi } from "../../api/auth.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { useNotifications } from "../../context/NotificationContext.jsx";
 import { PageLoader, EmptyState, ErrorState, PrimaryButton, TextField, TextArea } from "../../components/ui.jsx";
 import ItemCard from "../../components/ItemCard.jsx";
 import { formatDate } from "../../constants.js";
@@ -53,23 +54,18 @@ export function Favorites() {
 }
 
 export function Notifications() {
-  const [notifications, setNotifications] = useState(null);
+  const { notifications, loaded, refresh, markRead, markAllRead } = useNotifications();
   const [error, setError] = useState(null);
   const toast = useToast();
 
-  const load = () => {
+  useEffect(() => {
     setError(null);
-    notificationsApi
-      .list()
-      .then((res) => setNotifications(res.notifications))
-      .catch((err) => setError(err.message || "Couldn't load your notifications."));
-  };
-  useEffect(load, []);
+    refresh().catch((err) => setError(err?.message || "Couldn't load your notifications."));
+  }, [refresh]);
 
   const markAll = async () => {
     try {
-      await notificationsApi.markAllRead();
-      load();
+      await markAllRead();
     } catch (err) {
       toast.error(err.message);
     }
@@ -77,15 +73,14 @@ export function Notifications() {
 
   const openNotification = async (n) => {
     try {
-      if (!n.read) await notificationsApi.markRead(n._id);
-      load();
+      if (!n.read) await markRead(n._id);
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  if (error) return <ErrorState description={error} onRetry={load} />;
-  if (!notifications) return <PageLoader />;
+  if (error) return <ErrorState description={error} onRetry={refresh} />;
+  if (!loaded) return <PageLoader />;
 
   return (
     <div>

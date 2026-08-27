@@ -39,6 +39,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // The API client dispatches this when a request comes back 401 with an
+  // expired/invalid token, so an expired session clears itself out of the
+  // app immediately instead of quietly failing every subsequent request.
+  useEffect(() => {
+    const onSessionExpired = () => setUser(null);
+    window.addEventListener("auth:session-expired", onSessionExpired);
+    return () => window.removeEventListener("auth:session-expired", onSessionExpired);
+  }, []);
+
   const refreshUser = useCallback(async () => {
     const res = await authApi.me();
     setUser(res.user);

@@ -31,7 +31,12 @@ export const addFavorite = asyncHandler(async (req, res) => {
 export const removeFavorite = asyncHandler(async (req, res) => {
   const deleted = await Favorite.findOneAndDelete({ user: req.user._id, item: req.params.itemId });
   if (deleted) {
-    await Item.findByIdAndUpdate(req.params.itemId, { $inc: { favoriteCount: -1 } });
+    // Guard against favoriteCount ever dipping below 0 (e.g. a double-click
+    // firing two near-simultaneous removes for the same favorite).
+    await Item.updateOne(
+      { _id: req.params.itemId, favoriteCount: { $gt: 0 } },
+      { $inc: { favoriteCount: -1 } }
+    );
   }
   res.json({ success: true, message: "Removed from favorites." });
 });

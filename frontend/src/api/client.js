@@ -14,6 +14,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    // A 401 on a request that carried a token means the session itself is
+    // invalid/expired (not, say, a wrong-password attempt on /login, which
+    // never attaches a token in the first place). Treat that as a forced
+    // logout so the app doesn't keep silently failing requests forever.
+    if (err.response?.status === 401 && err.config?.headers?.Authorization) {
+      localStorage.removeItem("rentit_token");
+      window.dispatchEvent(new Event("auth:session-expired"));
+    }
+
     const message =
       err.response?.data?.message || err.message || "Something went wrong. Please try again.";
     const details = err.response?.data?.details;

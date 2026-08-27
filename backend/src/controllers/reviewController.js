@@ -7,14 +7,33 @@ import { ApiError } from "../utils/ApiError.js";
 import { notify } from "../utils/notify.js";
 
 // Recompute the running average without re-scanning every review, by
-// folding the new rating into the stored count/average atomically.
+// folding the new rating into the stored count/average.
+//
+// This uses a MongoDB aggregation-pipeline update, which — unlike a
+// find(), mutate-in-JS, then save() — is a single atomic operation on the
+// document. Two reviews landing at nearly the same instant can no longer
+// each read the same starting count/average and overwrite one another;
+// each update is computed server-side from whatever the current value is
+// at the moment it runs.
 async function bumpRating(Model, id, rating) {
-  const doc = await Model.findById(id);
-  const newCount = doc.ratingCount + 1;
-  const newAverage = (doc.ratingAverage * doc.ratingCount + rating) / newCount;
-  doc.ratingCount = newCount;
-  doc.ratingAverage = Math.round(newAverage * 10) / 10;
-  await doc.save();
+  await Model.updateOne({ _id: id }, [
+    {
+      $set: {
+        ratingAverage: {
+          $round: [
+            {
+              $divide: [
+                { $add: [{ $multiply: ["$ratingAverage", "$ratingCount"] }, rating] },
+                { $add: ["$ratingCount", 1] },
+              ],
+            },
+            1,
+          ],
+        },
+        ratingCount: { $add: ["$ratingCount", 1] },
+      },
+    },
+  ]);
 }
 
 // POST /api/reviews

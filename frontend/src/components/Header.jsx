@@ -4,25 +4,17 @@ import {
   Search, Plus, Menu, X, User, LayoutDashboard, Heart, LogOut, Shield, Bell,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { notificationsApi } from "../api/marketplace.js";
+import { useNotifications } from "../context/NotificationContext.jsx";
 import { SidebarContent } from "./Sidebar.jsx";
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!user) return;
-    notificationsApi
-      .list()
-      .then((res) => setUnreadCount(res.unreadCount))
-      .catch(() => {});
-  }, [user]);
 
   useEffect(() => {
     function onClickOutside(e) {
