@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Outlet } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout.jsx";
 import AuthLayout from "./components/AuthLayout.jsx";
 import { RequireAuth, RequireAdmin } from "./components/ProtectedRoute.jsx";
@@ -9,7 +9,8 @@ import Browse from "./pages/Browse.jsx";
 import ItemDetail from "./pages/ItemDetail.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import NotFound from "./pages/NotFound.jsx";
-import { Help, About, Terms, Privacy, ProhibitedItems } from "./pages/StaticPages.jsx";
+import HowItWorks from "./pages/dashboard/HowItWorks.jsx";
+import { About, Terms, Privacy, ProhibitedItems } from "./pages/StaticPages.jsx";
 
 import DashboardLayout from "./pages/dashboard/DashboardLayout.jsx";
 import DashboardOverview from "./pages/dashboard/DashboardOverview.jsx";
@@ -21,29 +22,31 @@ import Messages from "./pages/dashboard/Messages.jsx";
 import { Favorites, Notifications, Profile } from "./pages/dashboard/MiscPages.jsx";
 
 import {
-  AdminLayout, AdminOverview, AdminUsers, AdminListings, AdminBookings, AdminReports, AdminAuditLogs,
+  AdminLayout,
+  AdminOverview,
+  AdminUsers,
+  AdminListings,
+  AdminBookings,
+  AdminReports,
+  AdminAuditLogs,
 } from "./pages/admin/AdminPages.jsx";
 
 export default function App() {
   return (
     <Routes>
-      {/* Public: a single combined Login/Sign up page is the only thing
-          reachable without an account. It uses its own minimal layout —
-          no search bar, no site nav, no footer — just the logo and the
-          login/signup card. /register renders the same page, pre-selected
-          on the Sign up tab. */}
+      {/* Unprotected Auth Routes */}
       <Route element={<AuthLayout />}>
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<LoginPage />} />
+        <Route path="login" element={<LoginPage initialMode="login" />} />
+        <Route path="register" element={<LoginPage initialMode="signup" />} />
       </Route>
 
-      <Route element={<Layout />}>
-        {/* Everything else requires being logged in */}
-        <Route element={<RequireAuth><Outlet /></RequireAuth>}>
+      {/* Main Application Routes (Requires Authentication) */}
+      <Route element={<RequireAuth />}>
+        <Route element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="browse" element={<Browse />} />
           <Route path="items/:idOrSlug" element={<ItemDetail />} />
-          <Route path="help" element={<Help />} />
+          <Route path="help" element={<HowItWorks />} />
           <Route path="about" element={<About />} />
           <Route path="legal/terms" element={<Terms />} />
           <Route path="legal/privacy" element={<Privacy />} />
@@ -51,6 +54,7 @@ export default function App() {
 
           <Route path="profile" element={<Profile />} />
 
+          {/* User Dashboard */}
           <Route path="dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="listings" element={<MyListings />} />
@@ -63,7 +67,15 @@ export default function App() {
             <Route path="notifications" element={<Notifications />} />
           </Route>
 
-          <Route path="admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+          {/* Admin Section (Requires Admin privileges) */}
+          <Route
+            path="admin"
+            element={
+              <RequireAdmin>
+                <AdminLayout />
+              </RequireAdmin>
+            }
+          >
             <Route index element={<AdminOverview />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="listings" element={<AdminListings />} />
@@ -72,6 +84,7 @@ export default function App() {
             <Route path="audit-logs" element={<AdminAuditLogs />} />
           </Route>
 
+          {/* Fallback 404 Route */}
           <Route path="*" element={<NotFound />} />
         </Route>
       </Route>

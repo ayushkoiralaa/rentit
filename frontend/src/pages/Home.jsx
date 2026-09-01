@@ -1,175 +1,235 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Search, ArrowRight, ShieldCheck, HandCoins, Star } from "lucide-react";
-import { itemsApi } from "../api/items.js";
-import { categoriesApi } from "../api/marketplace.js";
-import ItemCard, { ItemCardSkeleton } from "../components/ItemCard.jsx";
-import { getCategoryIcon } from "../constants.js";
+import React from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
-export default function Home() {
-  const [query, setQuery] = useState("");
-  const [categories, setCategories] = useState([]);
-  const [trending, setTrending] = useState([]);
-  const [recent, setRecent] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const navigate = useNavigate();
+// Helper component to reveal text word-by-word
+function MaskedText({ text, className, delay = 0 }) {
+  const words = text.split(" ");
 
-  const loadHome = () => {
-    setLoading(true);
-    setLoadError(false);
-    Promise.all([
-      categoriesApi.list(),
-      itemsApi.browse({ sort: "recommended", limit: 8 }),
-      itemsApi.browse({ sort: "newest", limit: 8 }),
-    ])
-      .then(([catsRes, trendingRes, recentRes]) => {
-        setCategories(catsRes.categories.slice(0, 7));
-        setTrending(trendingRes.items);
-        setRecent(recentRes.items);
-      })
-      .catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: delay,
+      },
+    },
   };
 
-  useEffect(loadHome, []);
-
-  const submitSearch = (e) => {
-    e.preventDefault();
-    navigate(query.trim() ? `/browse?q=${encodeURIComponent(query.trim())}` : "/browse");
+  const wordVariants = {
+    hidden: { y: "110%", opacity: 0 },
+    visible: {
+      y: "0%",
+      opacity: 1,
+      transition: {
+        duration: 0.7,
+        ease: [0.33, 1, 0.68, 1], // Custom smooth ease
+      },
+    },
   };
 
   return (
-    <div>
-      {/* HERO */}
-      <section className="text-center px-4 pt-14 pb-10 sm:pt-16 sm:pb-12">
-        <h1 className="font-display font-extrabold text-[clamp(30px,5vw,48px)] leading-tight mb-3">
-          Rent Anything. <span className="text-brand">Your Way.</span>
-        </h1>
-        <p className="text-muted text-[15px] max-w-lg mx-auto mb-7">
-          Borrow what you need for a day, list what's sitting idle — from tools and electronics to
-          vehicles, fashion and second-hand furniture.
-        </p>
-        <form onSubmit={submitSearch} className="max-w-xl mx-auto bg-white border border-line rounded-2xl p-1.5 flex items-center gap-2 shadow-card">
-          <Search size={18} className="text-muted ml-3 shrink-0" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for tools, gadgets, vehicles..."
-            className="flex-1 min-w-0 border-none outline-none text-sm bg-transparent py-2.5"
-          />
-          <button type="submit" className="bg-brand text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-brand-dark shrink-0">
-            Search
-          </button>
-        </form>
-      </section>
+    <motion.div
+      className={`flex flex-wrap ${className}`}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {words.map((word, i) => (
+        <span key={i} className="overflow-hidden inline-block mr-[0.25em] py-1">
+          <motion.span variants={wordVariants} className="inline-block">
+            {word}
+          </motion.span>
+        </span>
+      ))}
+    </motion.div>
+  );
+}
 
-      {loadError && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="border border-dashed border-danger/30 bg-red-50/40 rounded-2xl p-4 text-sm text-center flex flex-col sm:flex-row items-center justify-center gap-2">
-            <span className="text-ink/80">Couldn't load listings right now.</span>
-            <button onClick={loadHome} className="font-semibold text-brand hover:underline">Try again</button>
-          </div>
-        </section>
-      )}
+export default function Home() {
+  const fadeUpVariant = {
+    hidden: { opacity: 0, y: 30 },
+    visible: (customDelay = 0) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.8,
+        delay: customDelay,
+        ease: [0.33, 1, 0.68, 1],
+      },
+    }),
+  };
 
-      {/* CATEGORY STRIP */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex gap-2.5 overflow-x-auto pb-2">
-          {categories.map((c) => {
-            const Icon = getCategoryIcon(c.icon);
-            return (
-              <Link
-                key={c._id}
-                to={`/browse?category=${c.slug}`}
-                className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full border border-line bg-white text-sm font-medium hover:border-brand hover:text-brand transition-colors"
-              >
-                <Icon size={15} /> {c.name}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+  // Configuration array for floating background bubbles
+  const bubbles = [
+    { size: "w-24 h-24", pos: "left-[10%] bottom-[-20px]", duration: 12, delay: 0 },
+    { size: "w-16 h-16", pos: "left-[25%] bottom-[-20px]", duration: 10, delay: 2 },
+    { size: "w-32 h-32", pos: "left-[45%] bottom-[-20px]", duration: 16, delay: 4 },
+    { size: "w-20 h-20", pos: "left-[65%] bottom-[-20px]", duration: 11, delay: 1 },
+    { size: "w-28 h-28", pos: "left-[80%] bottom-[-20px]", duration: 14, delay: 3 },
+    { size: "w-12 h-12", pos: "left-[90%] bottom-[-20px]", duration: 8, delay: 5 },
+  ];
 
-      {/* TRENDING */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-9">
-        <div className="flex items-baseline justify-between mb-4">
-          <h2 className="font-display font-bold text-xl">Trending near you</h2>
-          <Link to="/browse" className="text-sm font-semibold text-brand flex items-center gap-1 hover:gap-1.5 transition-all">
-            View all <ArrowRight size={14} />
-          </Link>
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Animated Hero Wrapper Container (Middle Section Only) */}
+      <div className="relative overflow-hidden rounded-3xl border border-blue-900/40 bg-slate-950 p-8 sm:p-12 lg:p-16 shadow-2xl min-h-[calc(100vh-6rem)] flex items-center">
+        
+        {/* 1. Dynamic Floating Animated Bubbles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {bubbles.map((b, idx) => (
+            <motion.div
+              key={idx}
+              className={`absolute rounded-full bg-gradient-to-t from-blue-500/20 to-cyan-400/10 border border-blue-400/20 backdrop-blur-[2px] shadow-[0_0_15px_rgba(59,130,246,0.2)] ${b.size} ${b.pos}`}
+              animate={{
+                y: ["0vh", "-110vh"],
+                x: [0, 15, -15, 0],
+                opacity: [0, 0.7, 0.7, 0],
+                scale: [0.8, 1.1, 0.9, 1],
+              }}
+              transition={{
+                duration: b.duration,
+                repeat: Infinity,
+                delay: b.delay,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {loading
-            ? Array.from({ length: 8 }).map((_, i) => <ItemCardSkeleton key={i} />)
-            : trending.map((item) => <ItemCard key={item._id} item={item} />)}
-        </div>
-      </section>
 
-      {/* RECENTLY ADDED */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12">
-        <div className="flex items-baseline justify-between mb-4">
-          <h2 className="font-display font-bold text-xl">Recently added</h2>
-          <Link to="/browse?sort=newest" className="text-sm font-semibold text-brand flex items-center gap-1 hover:gap-1.5 transition-all">
-            View all <ArrowRight size={14} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => <ItemCardSkeleton key={i} />)
-            : recent.map((item) => <ItemCard key={item._id} item={item} />)}
-        </div>
-      </section>
+        {/* 2. Animated Radial Glow Orbs */}
+        <div 
+          className="pointer-events-none absolute -top-24 -left-20 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl animate-pulse" 
+          style={{ animationDuration: '6s' }} 
+        />
+        <div 
+          className="pointer-events-none absolute -bottom-20 right-10 h-80 w-80 rounded-full bg-indigo-500/15 blur-3xl animate-pulse" 
+          style={{ animationDuration: '8s' }} 
+        />
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="bg-white border-y border-line mt-16 py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h2 className="font-display font-bold text-2xl text-center mb-10">How Rent It works</h2>
-          <div className="grid sm:grid-cols-3 gap-8 text-center">
-            {[
-              { icon: Search, t: "Search nearby", d: "Filter by category and location to see what's available close to you." },
-              { icon: HandCoins, t: "Request to rent", d: "Pick your dates, see the price breakdown, and send a request. The owner confirms." },
-              { icon: Star, t: "Return & rate", d: "Bring it back on time, then leave a rating for the next renter." },
-            ].map((s, i) => (
-              <div key={i}>
-                <div className="w-12 h-12 rounded-full bg-brand-soft text-brand flex items-center justify-center mx-auto mb-3">
-                  <s.icon size={22} />
-                </div>
-                <h3 className="font-display font-semibold text-[15px] mb-1.5">{s.t}</h3>
-                <p className="text-sm text-muted leading-relaxed max-w-[220px] mx-auto">{s.d}</p>
+        {/* 3. Cyber Dot-Grid Texture Overlay */}
+        <div 
+          className="pointer-events-none absolute inset-0 opacity-20 z-0" 
+          style={{
+            backgroundImage: `radial-gradient(rgba(59, 130, 246, 0.4) 1px, transparent 1px)`,
+            backgroundSize: '24px 24px'
+          }} 
+        />
+
+        {/* Main Hero Content Grid */}
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full relative z-10">
+          
+          {/* Left Hero Content */}
+          <div className="lg:col-span-7 space-y-8">
+            
+            {/* Badge */}
+            <motion.div
+              custom={0.1}
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+            >
+              <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold tracking-wider uppercase shadow-sm shadow-blue-500/10">
+                RENT ANYTHING. YOUR WAY.
+              </span>
+            </motion.div>
+
+            {/* Headline Reveal */}
+            <div className="text-4xl sm:text-5xl lg:text-6xl font-serif leading-tight tracking-tight text-white">
+              <MaskedText text="Great gear should feel like a" delay={0.2} />
+              <div className="overflow-hidden inline-block py-1">
+                <motion.span
+                  initial={{ y: "110%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  transition={{
+                    duration: 0.8,
+                    delay: 0.6,
+                    ease: [0.33, 1, 0.68, 1],
+                  }}
+                  className="inline-block italic font-normal text-blue-400 font-serif underline decoration-blue-500/40 decoration-2"
+                >
+                  shared event.
+                </motion.span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {/* TRUST & SAFETY */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="bg-brand-soft rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-6">
-          <div className="w-14 h-14 rounded-full bg-white text-brand flex items-center justify-center shrink-0">
-            <ShieldCheck size={26} />
-          </div>
-          <div>
-            <h3 className="font-display font-bold text-lg mb-1">Built for trust and safety</h3>
-            <p className="text-sm text-ink/80 max-w-2xl">
-              Every rental runs through server-verified pricing, protected security deposits, owner
-              and renter ratings, and a reporting system so issues get resolved quickly and fairly.
-            </p>
-          </div>
-        </div>
-      </section>
+            {/* Subtitle Reveal */}
+            <MaskedText
+              text="Thoughtful rentals, verified listings, and fast local pickups from community members near you."
+              className="text-slate-300 text-base sm:text-lg max-w-xl font-normal leading-relaxed"
+              delay={0.8}
+            />
 
-      {/* CTA */}
-      <section className="bg-brand text-white text-center px-4 py-12">
-        <h2 className="font-display font-bold text-2xl mb-2">Got something to rent out?</h2>
-        <p className="text-blue-100 mb-5 text-sm">List it in a few minutes — you set the rate and the rules.</p>
-        <Link
-          to="/dashboard/listings/new"
-          className="inline-flex items-center gap-2 bg-white text-brand font-semibold px-6 py-3 rounded-xl hover:bg-blue-50"
-        >
-          List your item <ArrowRight size={16} />
-        </Link>
-      </section>
+            {/* Call to Action Buttons */}
+            <motion.div
+              custom={1.2}
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-wrap gap-4 pt-2"
+            >
+              <Link
+                to="/browse"
+                className="px-7 py-3.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95 transition-all duration-200"
+              >
+                Explore listings
+              </Link>
+              <Link
+                to="/register"
+                className="px-7 py-3.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-semibold text-sm hover:scale-105 active:scale-95 transition-all duration-200"
+              >
+                Create account
+              </Link>
+            </motion.div>
+
+            {/* Features Bar */}
+            <motion.div
+              custom={1.4}
+              variants={fadeUpVariant}
+              initial="hidden"
+              animate="visible"
+              className="pt-6 border-t border-slate-800/80 flex flex-wrap gap-6 text-xs text-slate-400 font-medium"
+            >
+              <span className="flex items-center gap-2">★ 4.9 Community Rating</span>
+              <span className="text-slate-700">•</span>
+              <span>Verified Identity Checks</span>
+              <span className="text-slate-700">•</span>
+              <span>Instant Local Pickups</span>
+            </motion.div>
+
+          </div>
+
+          {/* Right Floating Badge Card */}
+          <motion.div
+            custom={1.0}
+            variants={fadeUpVariant}
+            initial="hidden"
+            animate="visible"
+            className="lg:col-span-5 flex justify-center"
+          >
+            <div className="group w-72 h-72 sm:w-80 sm:h-80 rounded-full border border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center relative shadow-2xl transition-all duration-500 hover:scale-105 hover:border-blue-800/60">
+              
+              {/* Subtle hover gradient glow */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                className="text-5xl sm:text-6xl mb-4 group-hover:scale-110 transition-transform duration-300"
+              >
+                📦
+              </motion.div>
+              <h3 className="text-2xl font-serif italic font-semibold text-white mb-2">
+                Rent It Local
+              </h3>
+              <p className="text-xs text-slate-400 max-w-[200px] leading-relaxed">
+                Save money, reduce waste, and access top-tier tools on demand.
+              </p>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
     </div>
   );
 }
