@@ -8,69 +8,6 @@ import { EmptyState, ErrorState } from "../components/ui.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 
-const MOCK_ITEMS = [
-  {
-    _id: "mock-1",
-    title: "Sony Alpha A7 III Camera + 24-70mm Lens",
-    category: { name: "Electronics", slug: "electronics" },
-    city: "Kathmandu",
-    pricePerDay: 1500,
-    condition: "LIKE_NEW",
-    images: ["https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80"],
-    rating: 4.9,
-  },
-  {
-    _id: "mock-2",
-    title: "Bosch Professional Cordless Power Drill Set",
-    category: { name: "Tools & Equipment", slug: "tools" },
-    city: "Pokhara",
-    pricePerDay: 500,
-    condition: "GOOD",
-    images: ["https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=800&q=80"],
-    rating: 4.8,
-  },
-  {
-    _id: "mock-3",
-    title: "DJI Mini 3 Pro Drone with Fly More Combo",
-    category: { name: "Electronics", slug: "electronics" },
-    city: "Lalitpur",
-    pricePerDay: 2500,
-    condition: "NEW",
-    images: ["https://images.unsplash.com/photo-1527977966376-1c8408f9f108?auto=format&fit=crop&w=800&q=80"],
-    rating: 5.0,
-  },
-  {
-    _id: "mock-4",
-    title: "Waterproof 4-Person Camping Tent",
-    category: { name: "Sports & Outdoors", slug: "outdoors" },
-    city: "Kathmandu",
-    pricePerDay: 800,
-    condition: "LIKE_NEW",
-    images: ["https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&w=800&q=80"],
-    rating: 4.7,
-  },
-  {
-    _id: "mock-5",
-    title: "Mountain Electric Bicycle (E-Bike)",
-    category: { name: "Vehicles", slug: "vehicles" },
-    city: "Pokhara",
-    pricePerDay: 1200,
-    condition: "GOOD",
-    images: ["https://images.unsplash.com/photo-1571068316344-75bc76f77890?auto=format&fit=crop&w=800&q=80"],
-    rating: 4.9,
-  },
-  {
-    _id: "mock-6",
-    title: "JBL PartyBox 310 Bluetooth Speaker",
-    category: { name: "Events & Party", slug: "party" },
-    city: "Kathmandu",
-    pricePerDay: 1000,
-    condition: "NEW",
-    images: ["https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=800&q=80"],
-    rating: 4.8,
-  },
-];
-
 const CONDITIONS = ["NEW", "LIKE_NEW", "GOOD", "FAIR"];
 const SORTS = [
   ["recommended", "Recommended"],
@@ -126,20 +63,12 @@ export default function Browse() {
       .browse({ q, tag, category, city, minPrice, maxPrice, condition, sort, page, limit: 12 })
       .then((res) => {
         setCityStats(res.cityStats || null);
-        if (res.items && res.items.length > 0) {
-          setItems(res.items);
-          setPagination(res.pagination);
-        } else {
-          // Fallback to mock items if server returns zero items
-          setItems(MOCK_ITEMS);
-          setPagination({ page: 1, totalPages: 1, total: MOCK_ITEMS.length });
-        }
+        setItems(res.items || []);
+        setPagination(res.pagination || { page: 1, totalPages: 1, total: 0 });
       })
       .catch(() => {
-        // Fallback to mock items on API connection failure
+        setLoadError(true);
         setCityStats(null);
-        setItems(MOCK_ITEMS);
-        setPagination({ page: 1, totalPages: 1, total: MOCK_ITEMS.length });
       })
       .finally(() => setLoading(false));
   };
@@ -151,7 +80,12 @@ export default function Browse() {
       const next = new URLSearchParams(searchParams);
       if (value) next.set(key, value);
       else next.delete(key);
-      next.delete("page");
+
+      // Reset to page 1 when changing filters, but keep page param when clicking page numbers
+      if (key !== "page") {
+        next.delete("page");
+      }
+
       setSearchParams(next);
     },
     [searchParams, setSearchParams]

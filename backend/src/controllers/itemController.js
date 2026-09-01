@@ -75,9 +75,10 @@ export const browseItems = asyncHandler(async (req, res) => {
     status,
     tag,
     sort = "recommended",
-    page = 1,
-    limit = 20,
   } = req.query;
+
+  const pageNum = Math.max(1, Number(req.query.page) || 1);
+  const limitNum = Math.min(60, Math.max(1, Number(req.query.limit) || 12));
 
   const filter = {};
 
@@ -142,8 +143,6 @@ export const browseItems = asyncHandler(async (req, res) => {
   };
   const sortSpec = sortMap[sort] || sortMap.recommended;
 
-  const pageNum = Math.max(1, Number(page));
-  const limitNum = Math.min(60, Math.max(1, Number(limit)));
 
   // Aggregate City Statistics if a city query parameter is present
   const cityStatsPromise = city
@@ -202,7 +201,6 @@ export const browseItems = asyncHandler(async (req, res) => {
     },
   });
 });
-
 // GET /api/items/:idOrSlug
 export const getItem = asyncHandler(async (req, res) => {
   const { idOrSlug } = req.params;
