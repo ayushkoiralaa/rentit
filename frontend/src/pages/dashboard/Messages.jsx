@@ -99,7 +99,7 @@ export default function Messages() {
               ) : (
                 <>
                   {messages.map((m) => (
-                    <div key={m._id} className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${String(m.sender) === String(user._id) || m.sender?._id === user._id ? "bg-brand text-white ml-auto" : "bg-surface"}`}>
+                    <div key={m._id} className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${String(m.sender) === String(user._id) || m.sender?._id === user._id ? "bg-brand text-white ml-auto" : "bg-surface text-ink"}`}>
                       {m.body}
                     </div>
                   ))}
@@ -112,7 +112,7 @@ export default function Messages() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 min-w-0 border border-line rounded-lg px-3 py-2 text-sm bg-surface outline-none focus:ring-2 focus:ring-brand/40"
+                className="flex-1 min-w-0 border border-line rounded-lg px-3 py-2 text-sm bg-surface text-ink text-slate-900 placeholder:text-muted outline-none focus:ring-2 focus:ring-brand/40"
               />
               <button type="submit" className="w-10 h-10 rounded-lg bg-brand text-white flex items-center justify-center shrink-0" aria-label="Send">
                 <Send size={16} />

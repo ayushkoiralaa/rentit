@@ -59,7 +59,7 @@ async function uniqueSlug(title) {
 }
 
 // GET /api/items — public marketplace browse with filtering, search,
-// sorting and database-side pagination. Never loads the whole table.
+// sorting, city-level analytics, and database-side pagination.
 export const browseItems = asyncHandler(async (req, res) => {
   const {
     q,
@@ -106,7 +106,12 @@ export const browseItems = asyncHandler(async (req, res) => {
       filter.category = category;
     }
   }
-  if (city) filter.city = new RegExp(`^${city}$`, "i");
+
+  // Case-insensitive City match (anchored string match)
+  if (city) {
+    filter.city = new RegExp(`^${city.trim()}$`, "i");
+  }
+
   if (condition) filter.condition = condition;
   if (minPrice || maxPrice) {
     filter.pricePerDay = {};
@@ -140,7 +145,29 @@ export const browseItems = asyncHandler(async (req, res) => {
   const pageNum = Math.max(1, Number(page));
   const limitNum = Math.min(60, Math.max(1, Number(limit)));
 
-  const [items, total] = await Promise.all([
+  // Aggregate City Statistics if a city query parameter is present
+  const cityStatsPromise = city
+    ? Item.aggregate([
+        {
+          $match: {
+            status: "PUBLISHED",
+            city: new RegExp(`^${city.trim()}$`, "i"),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            cityName: { $first: "$city" },
+            totalItems: { $sum: 1 },
+            minPrice: { $min: "$pricePerDay" },
+            maxPrice: { $max: "$pricePerDay" },
+            avgPrice: { $avg: "$pricePerDay" },
+          },
+        },
+      ])
+    : Promise.resolve([]);
+
+  const [items, total, statsResult] = await Promise.all([
     Item.find(filter)
       .sort(sortSpec)
       .skip((pageNum - 1) * limitNum)
@@ -149,10 +176,23 @@ export const browseItems = asyncHandler(async (req, res) => {
       .populate("owner", "name avatarUrl ratingAverage ratingCount")
       .lean(),
     Item.countDocuments(filter),
+    cityStatsPromise,
   ]);
+
+  let cityStats = null;
+  if (statsResult.length > 0) {
+    cityStats = {
+      cityName: statsResult[0].cityName,
+      totalItems: statsResult[0].totalItems,
+      minPrice: statsResult[0].minPrice,
+      maxPrice: statsResult[0].maxPrice,
+      avgPrice: Math.round(statsResult[0].avgPrice || 0),
+    };
+  }
 
   res.json({
     success: true,
+    cityStats,
     items,
     pagination: {
       page: pageNum,

@@ -1,86 +1,88 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { MapPin, Star, Heart } from "lucide-react";
-import { formatCurrency, CONDITION_LABELS } from "../constants.js";
-import { resolveAssetUrl } from "../api/client.js";
+import { Heart } from "lucide-react";
 
 export default function ItemCard({ item, isFavorited, onToggleFavorite }) {
-  const image = item.images?.[0]?.url;
-  const isPublished = item.status === "PUBLISHED";
+  if (!item) return null;
+
+  const id = item._id || item.id || "";
+  const title = item.title || "Untitled Item";
+  const categoryName = item.category?.name || (typeof item.category === "string" ? item.category : "General");
+  const city = item.city || "Nepal";
+  const price = item.pricePerDay ?? item.price ?? 0;
+  
+  const rawCondition = item.condition || "GOOD";
+  const condition = String(rawCondition).replace(/_/g, " ");
+  const rating = item.ratingAverage || item.rating || 5.0;
+
+  // Safely extract image URL handling string or object ({ url: '...' })
+  const firstImage = Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null;
+  const imageUrl =
+    (typeof firstImage === "string" ? firstImage : firstImage?.url) ||
+    item.imageUrl ||
+    "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80";
 
   return (
-    <Link
-      to={`/items/${item.slug}`}
-      className="group bg-white rounded-2xl border border-line overflow-hidden hover:shadow-card-hover hover:-translate-y-0.5 transition-all block relative"
-    >
-      <div className="h-36 sm:h-40 bg-brand-soft relative overflow-hidden">
-        {image ? (
-          <img
-            src={resolveAssetUrl(image)}
-            alt={item.title}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-brand text-3xl font-display font-bold">
-            {item.title?.charAt(0)}
-          </div>
-        )}
-
-        {!isPublished && (
-          <span className="absolute top-2.5 left-2.5 bg-ink/80 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize">
-            {item.status.replace("_", " ").toLowerCase()}
-          </span>
-        )}
+    <div className="group bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 hover:shadow-xl hover:shadow-blue-950/20 transition-all flex flex-col relative">
+      <div className="h-44 w-full overflow-hidden relative bg-slate-950">
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            e.target.src =
+              "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80";
+          }}
+        />
+        <span className="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md text-slate-200 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase border border-slate-800">
+          {condition}
+        </span>
 
         {onToggleFavorite && (
           <button
             onClick={(e) => {
               e.preventDefault();
-              e.stopPropagation();
               onToggleFavorite(item);
             }}
-            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center hover:bg-white"
-            aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            aria-label="Toggle favorite"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-800 flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors"
           >
-            <Heart size={15} className={isFavorited ? "fill-danger text-danger" : "text-muted"} />
+            <Heart size={14} className={isFavorited ? "fill-rose-500 text-rose-500" : ""} />
           </button>
         )}
       </div>
 
-      <div className="p-3.5">
-        <div className="text-[11px] font-semibold text-brand uppercase tracking-wide mb-1 truncate">
-          {item.category?.name || "Uncategorized"}
-        </div>
-        <h3 className="text-[15px] font-semibold text-ink mb-2 leading-snug line-clamp-2 min-h-[2.5em]">
-          {item.title}
-        </h3>
-        <div className="flex items-baseline gap-1 mb-2">
-          <span className="text-[17px] font-bold text-ink">{formatCurrency(item.pricePerDay)}</span>
-          <span className="text-xs text-muted">/ day</span>
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span className="flex items-center gap-1 truncate">
-            <MapPin size={12} className="shrink-0" /> {item.city}
+      <Link to={`/items/${id}`} className="p-4 flex flex-col flex-1 justify-between gap-3">
+        <div>
+          <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">
+            {categoryName} • {city}
           </span>
-          <span className="flex items-center gap-1 shrink-0">
-            <Star size={12} className="fill-brand text-brand" /> {item.ratingAverage?.toFixed(1) || "New"}
+          <h3 className="text-sm font-bold text-white line-clamp-1 group-hover:text-blue-400 transition-colors mt-1">
+            {title}
+          </h3>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-slate-800/80 pt-3">
+          <div>
+            <span className="text-base font-extrabold text-white">Rs. {price}</span>
+            <span className="text-xs text-slate-400"> / day</span>
+          </div>
+          <span className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+            ★ {rating}
           </span>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
 export function ItemCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-line overflow-hidden animate-pulse">
-      <div className="h-36 sm:h-40 bg-surface" />
-      <div className="p-3.5 space-y-2">
-        <div className="h-2.5 bg-surface rounded w-1/3" />
-        <div className="h-4 bg-surface rounded w-4/5" />
-        <div className="h-4 bg-surface rounded w-1/2" />
-      </div>
+    <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 animate-pulse space-y-3">
+      <div className="h-40 bg-slate-800/60 rounded-xl" />
+      <div className="h-4 bg-slate-800/60 rounded w-3/4" />
+      <div className="h-3 bg-slate-800/60 rounded w-1/2" />
+      <div className="h-5 bg-slate-800/60 rounded w-1/3 pt-2" />
     </div>
   );
 }
