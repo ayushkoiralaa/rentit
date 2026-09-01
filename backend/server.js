@@ -9,21 +9,25 @@ const { ensureBaseData } = await import("./src/seed/ensureBaseData.js");
 
 await connectDB();
 
-// Guarantees the admin/owner/renter demo logins and the base category tree
-// exist on every boot — without ever touching real data — so you never have
-// to remember to run `npm run seed` after a restart or a fresh database.
-// Set AUTO_SEED=false in .env to turn this off (e.g. in production).
 if (env.autoSeed) {
   await ensureBaseData();
 }
 
 const app = createApp();
 
-const server = app.listen(env.port, () => {
-  console.log(`[server] Rent It API running on http://localhost:${env.port} (${env.nodeEnv})`);
+const PORT = 5000;
+
+const server = app.listen(PORT, () => {
+  console.log(`[server] Rent It API running on http://localhost:${PORT} (${env.nodeEnv})`);
 });
 
-// Fail loudly instead of leaving the process silently half-broken.
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`[fatal] Port ${PORT} is already in use. Please kill the process running on port ${PORT}.`);
+    process.exit(1);
+  }
+});
+
 process.on("unhandledRejection", (err) => {
   console.error("[fatal] Unhandled promise rejection:", err);
   server.close(() => process.exit(1));
